@@ -1,0 +1,66 @@
+在Dockerfile就在当前目录时使用docker build -t <docker名称> .来部署docker环境
+
+容器内没有配置 ROS 2 的官方 apt 源时（无法定位功能包）：
+请在容器内执行（你当前是 piper@ros2:/workspace/piper_ws，在这里直接执行即可）：
+# 1) 确认 ROS 发行版（可选）
+echo "ROS_DISTRO=$ROS_DISTRO"
+ls /opt/ros
+# 2) 安装基础工具并启用 universe
+sudo apt-get update
+sudo apt-get install -y software-properties-common curl gnupg lsb-release
+sudo add-apt-repository -y universe
+# 3) 添加 ROS 2 仓库密钥与源（根据容器的 Ubuntu 代号自动选择 jammy/noble）
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+  -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+| sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+# 4) 更新索引并安装 Humble 对应包（变量已解析为 humble）
+sudo apt-get update
+sudo apt-get install -y \
+  ros-$ROS_DISTRO-ros2-control \
+  ros-$ROS_DISTRO-ros2-controllers \
+  ros-$ROS_DISTRO-controller-manager
+
+安装完成后可验证：
+apt-cache policy ros-$ROS_DISTRO-ros2-control | sed -n '1,10p'
+ros2 pkg list | grep -E 'ros2_control|controller_manager'
+
+ros2密钥冲突（apt源冲突）的情况下：
+# 1) 清理冲突的 ROS 2 源配置
+sudo bash -c '
+set -e
+# 备份（可选）
+mkdir -p /etc/apt/backup && cp -a /etc/apt/sources.list.d /etc/apt/backup/sources.list.d.$(date +%s) || true
+cp -a /etc/apt/sources.list /etc/apt/backup/sources.list.$(date +%s) || true
+# 删除所有包含 packages.ros.org/ros2/ubuntu 的条目
+sed -i "/packages\.ros\.org\/ros2\/ubuntu/d" /etc/apt/sources.list || true
+for f in /etc/apt/sources.list.d/*; do
+  [ -f "$f" ] || continue
+  if grep -q "packages\.ros\.org/ros2/ubuntu" "$f"; then
+    rm -f "$f"
+  fi
+done
+'
+# 2) 重新添加官方 key 与源（自动匹配容器的 Ubuntu 代号 jammy/noble）
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+  -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+| sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+# 3) 更新索引
+sudo apt-get update
+
+然后安装 Humble 对应的 ros2_control 包（你的容器里 $ROS_DISTRO 显示为 humble）：
+# 若不确定，先加载一次环境以保证 $ROS_DISTRO = humble
+source /opt/ros/humble/setup.bash
+echo "ROS_DISTRO=$ROS_DISTRO"
+# 安装
+sudo apt-get install -y \
+  ros-$ROS_DISTRO-ros2-control \
+  ros-$ROS_DISTRO-ros2-controllers \
+  ros-$ROS_DISTRO-controller-manager
+
+如果bash find_all_can_port.sh这步无法找到文件就运行下面的命令：
+find / -maxdepth 5 -type f -name 'find_all_can_port.sh' 2>/dev/null #全盘搜索find_all_can_port.sh
+找到之后运行bash + find_all_can_port.sh所在的位置
