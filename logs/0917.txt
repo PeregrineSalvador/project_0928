@@ -1,10 +1,10 @@
 如果你想在容器里直接驱动 USB 设备，需要给容器权限和设备映射，并且驱动必须在宿主机内核中：
-docker run --rm -it \
-  --privileged \
-  --device /dev/bus/usb:/dev/bus/usb \
-  --cap-add NET_ADMIN \
-  --network host \
-  <image> bash
+docker run -it --privileged \
+  --group-add video \
+  -v /dev:/dev \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -e DISPLAY \
+  piper_ros2:0912 /bin/bash
 
 将用户添加到用户组：
 sudo groupadd docker

@@ -1,0 +1,17 @@
+激活can模块：
+bash can_activate.sh can0 1000000
+
+启用控制节点：
+ros2 run piper piper_single_ctrl --ros-args -p can_port:=can0 -p auto_enable:=false -p gripper_exist:=true -p gripper_val_mutiple:=2
+
+使能机械臂：
+ros2 topic pub /enable_flag std_msgs/msg/Bool data:\ true\ 
+
+控制机械臂运动节点发布信息（Readme文档中发布信息节点有误）：
+ros2 topic pub /joint_ctrl_single sensor_msgs/msg/JointState "{
+  header: {stamp: {sec: 0, nanosec: 0}, frame_id: 'piper_single'},
+  name: ['joint1','joint2','joint3','joint4','joint5','joint6','joint7'],
+  position: [0.2,0.2,-0.2,0.3,-0.2,0.5 ,0.01],
+  velocity: [0.0,0.0,0.0,0.0,0.0,0.0,10.0],
+  effort: [0.0,0.0,0.0,0.0,0.0,0.0,0.5]
+}"
